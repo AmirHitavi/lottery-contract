@@ -10,12 +10,20 @@ error Lottery__NotEnoughETH();
 error Lottery__TransferFailed();
 error Lottery__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 lotteryState);
 
+/**
+ * @title Lottery Contract
+ * @author Amir Hitavi
+ * @notice This contract is for creating a sample lottery contract
+ * @dev This implements the Chainlink VRF Version 2
+ */
 contract Lottery is VRFConsumerBaseV2, AutomationCompatibleInterface {
+    /* Type declarations */
     enum LotteryState {
         OPEN,
         CALCULATING
     }
 
+    /* State variables */
     LotteryState private s_lotteryState;
     address payable[] private s_players;
     uint256 private immutable i_entranceFee;
@@ -29,10 +37,12 @@ contract Lottery is VRFConsumerBaseV2, AutomationCompatibleInterface {
     uint256 private i_interval;
     uint256 private s_lastTimeStamp;
 
+    /* Events */
     event LotteryEnter(address indexed player);
     event RequestedLotteryWinner(uint256 indexed requestId);
     event WinnerPicked(address indexed winner);
 
+    /* Functions */
     constructor(
         uint256 entranceFee,
         address vrfCoordinatorV2,
@@ -62,6 +72,10 @@ contract Lottery is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit LotteryEnter(msg.sender);
     }
 
+    /**
+     * @dev This is the function that the Chainlink Keeper nodes call
+     * they look for `upkeepNeeded` to return True.
+     */
     function checkUpkeep(
         bytes memory /* checkData */
     ) public view override returns (bool upkeepNeeded, bytes memory /* performData */) {
@@ -72,6 +86,11 @@ contract Lottery is VRFConsumerBaseV2, AutomationCompatibleInterface {
         upkeepNeeded = (hasPlayer && hasBalance && isOpen && timePassed);
         return (upkeepNeeded, "0x0");
     }
+
+    /**
+     * @dev This function is called, when checkUpkeep is returning true
+     * and it kicks off a Chainlink VRF call to get a random winner.
+     */
 
     function performUpkeep(bytes calldata /* performData */) external override {
         (bool upkeepNeeded, ) = checkUpkeep("");
@@ -94,6 +113,11 @@ contract Lottery is VRFConsumerBaseV2, AutomationCompatibleInterface {
         emit RequestedLotteryWinner(requestId);
     }
 
+    /**
+     * @dev This function call by Chainlink VRF nodes
+     * to send the money to the random winner.
+     */
+
     function fulfillRandomWords(
         uint256 /*requestId*/,
         uint256[] memory randomWords
@@ -111,6 +135,8 @@ contract Lottery is VRFConsumerBaseV2, AutomationCompatibleInterface {
 
         emit WinnerPicked(recentWinner);
     }
+
+    /* Getter Functions */
 
     function getLotteryState() public view returns (LotteryState) {
         return s_lotteryState;
