@@ -1,12 +1,12 @@
-const { network, ethers, run } = require("hardhat")
+const { network, ethers } = require("hardhat")
 const { networkConfig, developmentChains } = require("../helper-hardhat-config")
-// const { verify } = require("../utils/verify")
+const { verify } = require("../utils/verify")
 
 const FUND_AMOUNT = ethers.utils.parseEther("1")
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy, log } = deployments
-    const { deployer, player } = await getNamedAccounts()
+    const { deployer } = await getNamedAccounts()
     const chainID = network.config.chainId
 
     let VRFCoordinatorV2Address
@@ -15,6 +15,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     if (chainID == 31337) {
         const VRFCoordinatorV2 = await ethers.getContract("VRFCoordinatorV2Mock")
         VRFCoordinatorV2Address = VRFCoordinatorV2.address
+        // create subscription and fund it
         const transactionResponse = await VRFCoordinatorV2.createSubscription()
         const transactionReceipt = await transactionResponse.wait(1)
         subscriptionId = transactionReceipt.events[0].args.subId
@@ -44,16 +45,18 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
     log(`Lottery contract deployed to ${lottery.address}`)
 
+    // Ensure the Lottery contract is a valid consumer of the VRFCoordinatorV2Mock contract.
     if (developmentChains.includes(network.name)) {
         const vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock")
         await vrfCoordinatorV2Mock.addConsumer(subscriptionId, lottery.address)
     }
 
-    // if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
-    //     log("Verifying...")
-    //     await verify(lottery.address, args)
-    // }
-    // log("===========================================================")
+    // verify the deployment to etherscan
+    if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
+        log("Verifying...")
+        await verify(lottery.address, args)
+    }
+    log("===========================================================")
 }
 
 module.exports.tags = ["all", "lottery"]
