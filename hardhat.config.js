@@ -35,7 +35,7 @@ module.exports = {
         deployer: {
             default: 0,
         },
-        plater: {
+        player: {
             default: 1,
         },
     },
